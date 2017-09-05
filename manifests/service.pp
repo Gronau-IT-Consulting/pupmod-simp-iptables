@@ -21,18 +21,32 @@ class iptables::service (
       $_ensure = 'stopped'
     }
 
+    case $facts['os']['name'] {
+      'RedHat','CentOS': {
+        $_confdir = '/etc/sysconfig'
+        $_provider = 'redhat'
+      }
+      'Debian','Ubuntu': {
+        $_confdir = '/etc/default'
+        $_provider = 'debian'
+      }
+      default: {
+        fail("${::operatingsystem} is not yet supported by ${module_name}")
+      }
+    }
+
     service { 'iptables':
       ensure     => $_ensure,
       enable     => $enable,
       hasrestart => false,
-      restart    => '/sbin/iptables-restore /etc/sysconfig/iptables || ( /sbin/iptables-restore /etc/sysconfig/iptables.bak && exit 3 )',
+      restart    => "/sbin/iptables-restore ${_confdir}/iptables || ( /sbin/iptables-restore ${_confdir}/iptables.bak && exit 3 )",
       hasstatus  => true,
-      provider   => 'redhat'
+      provider   => $_provider
     }
 
     service { 'iptables-retry':
       enable   => $enable,
-      provider => 'redhat'
+      provider => $_provider
     }
 
     if $ipv6 and $facts['ipv6_enabled'] {
@@ -40,16 +54,16 @@ class iptables::service (
         ensure     => $_ensure,
         enable     => $enable,
         hasrestart => false,
-        restart    => '/sbin/ip6tables-restore /etc/sysconfig/ip6tables || ( /sbin/ip6tables-restore /etc/sysconfig/ip6tables.bak && exit 3 )',
+        restart    => "/sbin/ip6tables-restore ${_confdir}/ip6tables || ( /sbin/ip6tables-restore ${_confdir}/ip6tables.bak && exit 3 )",
         hasstatus  => true,
         require    => File['/etc/init.d/ip6tables'],
-        provider   => 'redhat'
+        provider   => $_provider
       }
 
       service { 'ip6tables-retry':
         enable   => true,
         require  => File['/etc/init.d/ip6tables-retry'],
-        provider => 'redhat'
+        provider => $_provider
       }
     }
 
@@ -63,6 +77,8 @@ class iptables::service (
             before => Service['iptables']
           }
         }
+      }
+      'Debian','Ubuntu': {
       }
       default: {
         fail("${::operatingsystem} is not yet supported by ${module_name}")

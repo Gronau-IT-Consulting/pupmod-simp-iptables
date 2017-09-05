@@ -97,6 +97,18 @@ class iptables (
     contain '::iptables::install'
     contain '::iptables::service'
 
+    case $facts['os']['name'] {
+      'RedHat','CentOS': {
+        $_confdir = '/etc/sysconfig'
+      }
+      'Debian','Ubuntu': {
+        $_confdir = '/etc/default'
+      }
+      default: {
+        fail("${::operatingsystem} is not yet supported by ${module_name}")
+      }
+    }
+
     if $default_rules { contain '::iptables::rules::base' }
     if $scanblock { contain '::iptables::rules::scanblock' }
     if $prevent_localhost_spoofing { contain '::iptables::rules::prevent_localhost_spoofing' }
@@ -105,14 +117,14 @@ class iptables (
 
     # These are required to run if you are managing iptables with the custom
     # types at all.
-    iptables_optimize { '/etc/sysconfig/iptables':
+    iptables_optimize { "${_confdir}/iptables":
       optimize => $optimize_rules,
       ignore   => $ignore,
       disable  => !$enable
     }
 
     if $ipv6 and $facts['ipv6_enabled'] {
-      ip6tables_optimize { '/etc/sysconfig/ip6tables':
+      ip6tables_optimize { "${_confdir}/ip6tables":
         optimize => $optimize_rules,
         ignore   => $ignore,
         disable  => !$enable

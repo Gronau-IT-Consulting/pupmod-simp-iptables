@@ -8,6 +8,20 @@
 class iptables::install {
   assert_private()
 
+  case $facts['os']['name'] {
+    'RedHat','CentOS': {
+      $_confdir = '/etc/sysconfig'
+      $_filesubdir = ''
+    }
+    'Debian','Ubuntu': {
+      $_confdir = '/etc/default'
+      $_filesubdir = 'debian/'
+    }
+    default: {
+      fail("${::operatingsystem} is not yet supported by ${module_name}")
+    }
+  }
+
   # IPV4-only stuff
   package { 'iptables': ensure => $::iptables::ensure }
 
@@ -16,7 +30,7 @@ class iptables::install {
     owner   => 'root',
     group   => 'root',
     mode    => '0744',
-    content => file("${module_name}/iptables"),
+    content => file("${module_name}/${_filesubdir}iptables"),
     seltype => 'iptables_initrc_exec_t'
   }
 
@@ -28,11 +42,11 @@ class iptables::install {
     owner   => 'root',
     group   => 'root',
     mode    => '0744',
-    content => file("${module_name}/iptables-retry"),
+    content => file("${module_name}/${_filesubdir}iptables-retry"),
     seltype => 'iptables_initrc_exec_t'
   }
 
-  file { '/etc/sysconfig/iptables':
+  file { "${_confdir}/iptables":
     owner => 'root',
     group => 'root',
     mode  => '0640'
@@ -40,7 +54,7 @@ class iptables::install {
 
   Package['iptables'] -> File['/etc/init.d/iptables']
   Package['iptables'] -> File['/etc/init.d/iptables-retry']
-  Package['iptables'] -> File['/etc/sysconfig/iptables']
+  Package['iptables'] -> File["${_confdir}/iptables"]
 
   if $::iptables::ipv6 and $facts['ipv6_enabled'] {
     # IPV6-only stuff
@@ -50,7 +64,7 @@ class iptables::install {
       group   => 'root',
       mode    => '0744',
       seltype => 'iptables_initrc_exec_t',
-      content => file("${module_name}/ip6tables")
+      content => file("${module_name}/${_filesubdir}ip6tables")
     }
 
     file { '/etc/init.d/ip6tables-retry':
@@ -59,10 +73,10 @@ class iptables::install {
       group   => 'root',
       mode    => '0744',
       seltype => 'iptables_initrc_exec_t',
-      content => file("${module_name}/ip6tables-retry")
+      content => file("${module_name}/${_filesubdir}ip6tables-retry")
     }
 
-    file { '/etc/sysconfig/ip6tables':
+    file { "${_confdir}/ip6tables":
       owner => 'root',
       group => 'root',
       mode  => '0640'
@@ -73,14 +87,19 @@ class iptables::install {
         if $facts['os']['release']['major'] > '6' {
           Package['iptables'] -> File['/etc/init.d/ip6tables']
           Package['iptables'] -> File['/etc/init.d/ip6tables-retry']
-          Package['iptables'] -> File['/etc/sysconfig/ip6tables']
+          Package['iptables'] -> File["${_confdir}/ip6tables"]
         }
         else {
           package { 'iptables-ipv6': ensure => $::iptables::ensure }
           Package['iptables-ipv6'] -> File['/etc/init.d/ip6tables']
           Package['iptables-ipv6'] -> File['/etc/init.d/ip6tables-retry']
-          Package['iptables-ipv6'] -> File['/etc/sysconfig/ip6tables']
+          Package['iptables-ipv6'] -> File["${_confdir}/ip6tables"]
         }
+      }
+      'Debian','Ubuntu': {
+        Package['iptables'] -> File['/etc/init.d/ip6tables']
+        Package['iptables'] -> File['/etc/init.d/ip6tables-retry']
+        Package['iptables'] -> File["${_confdir}/ip6tables"]
       }
       default: {
         fail("${::operatingsystem} is not yet supported by ${module_name}")

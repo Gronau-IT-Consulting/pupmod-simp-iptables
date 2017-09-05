@@ -6,16 +6,21 @@ Puppet::Type.type(:iptables_rule).provide(:manage) do
   commands :iptables  => 'iptables'
   commands :ip6tables => 'ip6tables'
 
+  @_confdir = '/etc/sysconfig'
+  if ['Debian','Ubuntu'].include? Facter.value('operatingsystem')
+    @_confdir = '/etc/default'
+  end
+
   $iptables_rule_classvars = {
     :iptables         => {
-      :target_file      => '/etc/sysconfig/.iptables_puppet',
+      :target_file      => "#{@_confdir}/.iptables_puppet",
       :old_content      => '',
       :old_content_hash => {},
       :new_content      => {},
       :valid_tables     => [:nat, :filter, :mangle, :raw]
     },
     :ip6tables        => {
-      :target_file      => '/etc/sysconfig/.ip6tables_puppet',
+      :target_file      => "#{@_confdir}/.ip6tables_puppet",
       :old_content      => '',
       :old_content_hash => {},
       :new_content      => {},
